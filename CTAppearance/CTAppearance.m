@@ -110,7 +110,16 @@ BOOL _CTAppearanceEnabled = YES;
             
             if (superviews == nil) {
                 superviews = [NSMutableArray array];
+
+                [self collateViewControllersOfView:arg1 intoArray:superviews];
                 [self collateSuperviews: superview intoArray:superviews];
+                
+                // NOTE: If the view is inside of a UIPopoverController, that should be added here at the
+                // end of the array, as it is also a UIAppearanceContainer.  There does not seem to be any
+                // public API to determine that.  If you are in a position to use private API, you could
+                // iterate through the superviews array here, and if any UIViewController instance has a
+                // popover set in its _popoverController instance variable, add it.  If there is a local
+                // way to determine a current popover, use that.
             }
             
             for (CTAppearance *a in parents) {
@@ -121,6 +130,7 @@ BOOL _CTAppearanceEnabled = YES;
                     for (UIView *sv in superviews) {
                         if ([sv isKindOfClass: c] || [sv isMemberOfClass:c]) {
                             found = YES;
+                            break;
                         }
                     }
                     
@@ -137,9 +147,23 @@ BOOL _CTAppearanceEnabled = YES;
     }
 }
 
++ (void)collateViewControllersOfView:(UIView*)view intoArray:(NSMutableArray *)svs
+{
+    id responder = [view nextResponder];
+    if ([responder isKindOfClass:[UIViewController class]]) {
+        UIViewController *controller = responder;
+        while (controller) {
+            [svs addObject:controller];
+            controller = controller.parentViewController;
+        }
+
+    }
+}
+
 + (void)collateSuperviews:(UIView*)superview intoArray:(NSMutableArray*)svs {
     if (superview) {
         [svs addObject: superview];
+        [self collateViewControllersOfView:superview intoArray:svs];
         [self collateSuperviews:superview.superview intoArray:svs];
     }
 }
