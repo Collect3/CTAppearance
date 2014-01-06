@@ -75,7 +75,7 @@ Pod::Spec.new do |s|
   #  Supports git, hg, bzr, svn and HTTP.
   #
 
-  s.source       = { :git => "https://github.com/ourui/CTAppearance.git" }
+  s.source       = { :git => "https://github.com/Collect3/CTAppearance.git" }
 
 
   # ――― Source Code ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
@@ -87,7 +87,7 @@ Pod::Spec.new do |s|
   #
 
   s.source_files  = 'CTAppearance/', 'CTAppearance/**/*.{h,m}'
-  s.exclude_files = 'Classes/Exclude'
+  s.exclude_files = 'CTAppearance/Exclude'
 
   # s.public_header_files = 'Classes/**/*.h'
 
