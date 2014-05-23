@@ -61,4 +61,4 @@ The solutions I know about to fix / support this feature require a lot of swizzl
 [@djfumberger](https://twitter.com/djfumberger)
 
 ## License
-CTChromecast is available under the MIT license. See the LICENSE file for more info.
+CTAppearance is available under the MIT license. See the LICENSE file for more info.
