@@ -84,9 +84,40 @@ BOOL _CTAppearanceEnabled = YES;
     return items;
 }
 
+// Invocations which retain arguments also retain all targets it is invoked with,
+// and keeps them until the NSInvocation is dealloced (they are stored perpetually in
+// an internal NSArray). Since all of our captured invocations are basically retained
+// forever, we have to use a copy of the NSInvocation to do the actual perform lest
+// we leak all of the objects we perform on.  We can avoid making the copy if the
+// NSInvocation does not retain arguments.
++ (void)_performInvocation:(NSInvocation *)invocation onTarget:(id)target
+{
+    NSInvocation *invocationToUse = invocation;
+
+    if (invocation.argumentsRetained)
+    {
+        NSMethodSignature *sig = invocation.methodSignature;
+        NSInvocation *invokeCopy = [NSInvocation invocationWithMethodSignature:sig];
+        invokeCopy.selector = invocation.selector;
+
+        for (NSUInteger arg=2; arg<sig.numberOfArguments; arg++) {
+            const char *objcType = [sig getArgumentTypeAtIndex:arg];
+            NSUInteger valueSize;
+            NSGetSizeAndAlignment(objcType, &valueSize, NULL);
+            uint8_t buffer[valueSize];
+            [invocation getArgument:buffer atIndex:arg];
+            [invokeCopy setArgument:buffer atIndex:arg];
+        }
+        
+        invocationToUse = invokeCopy;
+    }
+    
+    [invocationToUse invokeWithTarget:target];
+}
+
 + (void)_applyInvocations:(NSArray*)invocations target:(id)target {
     for (NSInvocation *invocation in invocations) {
-        [invocation invokeWithTarget: target];
+        [self _performInvocation:invocation onTarget:target];
     }
 }
 
@@ -150,12 +181,28 @@ BOOL _CTAppearanceEnabled = YES;
     return [NSString stringWithFormat:@"%@ <Customizable class: %@>%@ with invocations %@", d , NSStringFromClass(self.customizableClass), containedIn, self.invocations];
 }
 
+// If there are no object arguments, we don't need to have the invocation retain arguments.
+// We use that fact to optimize invocation later on.
+- (BOOL)_needsRetainArguments:(NSInvocation *)invocation
+{
+    NSMethodSignature *sig = [invocation methodSignature];
+
+    for (NSUInteger i = 2; i < [sig numberOfArguments]; i++) {
+        const char *objcType = [sig getArgumentTypeAtIndex:i];
+        if (objcType[0] == _C_ID)
+            return YES;
+    }
+    
+    return NO;
+}
+
 - (void)forwardInvocation:(NSInvocation *)anInvocation {
     if (self.invocations == nil) {
         self.invocations = [NSMutableArray array];
     }
     [self.invocations addObject: anInvocation];
-    [anInvocation retainArguments];
+    if ([self _needsRetainArguments:anInvocation])
+        [anInvocation retainArguments];
 }
 
 - (BOOL)instanceRespondToSelector:(SEL)aSelector {
