@@ -19,7 +19,7 @@ static void _CTAppearanceReplaceClassSelector(Class klass, SEL srcSelector, SEL 
     method_exchangeImplementations(dstMethod, srcMethod);
 }
 
-static void _CTAppearanceReplaceInstanceSelector(Class klass, SEL srcSelector, SEL dstSelector) {
+__unused static void _CTAppearanceReplaceInstanceSelector(Class klass, SEL srcSelector, SEL dstSelector) {
     Method srcMethod = class_getInstanceMethod(klass, srcSelector);
     Method dstMethod = class_getInstanceMethod(klass, dstSelector);
     method_exchangeImplementations(dstMethod, srcMethod);
@@ -65,6 +65,7 @@ static void _CTAppearanceReplaceInstanceSelector(Class klass, SEL srcSelector, S
     
     // Always apply the hierarchy appearances when moving superviews
     [CTAppearance applyContainedInTo: self forSuperview: superview];
+    [self setAppliedAppearanceWindow:superview.window];
 }
 
 - (void)willMoveToSuperview:(UIView *)newSuperview {
@@ -82,8 +83,19 @@ static void _CTAppearanceReplaceInstanceSelector(Class klass, SEL srcSelector, S
     }
 }
 
+- (void)didMoveToWindow {
+    if (![CTAppearance isEnabled]) { return; }
+    
+    // If we moved to a new window, we need to re-check the hierarchy. Common need for UITableView subviews.
+    UIWindow *window = self.window;
+    if (window && window != [self appliedAppearanceWindow]) {
+        [CTAppearance applyContainedInTo: self forSuperview: self.superview];
+    }
+    [self setAppliedAppearanceWindow:window];
+}
+
 #pragma mark -
-#pragma mark Associatd Objects
+#pragma mark Associated Objects
 #pragma mark -
 - (void)setHasAppliedAppearance:(BOOL)hasApplied {
     objc_setAssociatedObject(self, &_property_hasAppliedKey, [NSNumber numberWithBool:hasApplied], OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -92,4 +104,16 @@ static void _CTAppearanceReplaceInstanceSelector(Class klass, SEL srcSelector, S
 - (BOOL)hasAppliedAppearance {
     return [objc_getAssociatedObject(self, &_property_hasAppliedKey) boolValue];
 }
+
+static char * APPLIED_WINDOW = "_property_appliedAppearWindow";
+
+- (void)setAppliedAppearanceWindow:(UIWindow *)window {
+    objc_setAssociatedObject(self, APPLIED_WINDOW, window, OBJC_ASSOCIATION_ASSIGN);
+}
+
+- (id)appliedAppearanceWindow {
+    return objc_getAssociatedObject(self, APPLIED_WINDOW);
+}
+
 @end
+
