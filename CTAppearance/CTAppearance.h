@@ -1,5 +1,5 @@
 //
-//  CTApperance.h
+//  CTAppearance.h
 //  AppearanceTest
 //
 //  Created by David Fumberger on 11/09/2013.
